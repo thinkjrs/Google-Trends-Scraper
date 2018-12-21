@@ -2,7 +2,9 @@ import sys
 import os
 import time
 import pandas as pd
+from numpy.random import rand
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 print(f"before path: {sys.path}")
 
@@ -11,12 +13,26 @@ sys.path.insert(0, "google_trends_scraper")
 
 print(f"after path: {sys.path}")
 
+
 class GoogleTrendsScraper:
-    original_output_file_name = "multiTimeline.csv" # the name of the output CSV file from Google Trends
+    original_output_file_name = (
+        "multiTimeline.csv"
+    )  # the name of the output CSV file from Google Trends
 
     """Grabs weekly data from start to end for given query
     """
-    def __init__(self, query, start_date, end_date, output_file_name="output.csv", seconds_delay=15, weekly_granularity=False):
+
+    def __init__(
+        self,
+        query,
+        start_date,
+        end_date,
+        email,
+        psswd,
+        output_file_name="output.csv",
+        seconds_delay=15,
+        weekly_granularity=False,
+    ):
         """
 
         :param query: the query we're scraping
@@ -27,13 +43,43 @@ class GoogleTrendsScraper:
         :param weekly_granularity: whether Google Trends data should be broken up to many weeks
         """
 
-        self.query = query.replace(' ', "%20")
+        self.query = query.replace(" ", "%20")
         self.start_date = start_date
         self.end_date = end_date
+        self.email = email  
+        self.psswd = psswd
         self.output_file_name = output_file_name
         self.seconds_delay = seconds_delay
         self.weekly_granularity = weekly_granularity
+        self.auth_url = 'https://accounts.google.com/signin'
+        self.download_path = os.getcwd()
+        self.driver = webdriver.Chrome(executable_path = 'google_trends_scraper/chromedriver',
+                                       chrome_options = self.get_options())
+ 
 
+    def auth_google(self):
+        self.driver.get(self.auth_url)
+        self.driver.implicitly_wait(3)
+        self.driver.find_element_by_id("identifierId").send_keys(self.email)
+        self.driver.find_element_by_id("identifierNext").click()
+        time.sleep(1 + rand() * .5)
+        self.driver.find_element_by_css_selector(
+            "input[type='password']").send_keys(self.psswd)
+        element = self.driver.find_element_by_id('passwordNext')
+        self.driver.execute_script("arguments[0].click();", element)
+    
+    def get_options(self):
+        # Add arguments telling Selenium to not actually open a window
+        chrome_options = Options()
+        download_prefs = {'download.default_directory' : self.download_path,
+                          'download.prompt_for_download' : False,
+                          'profile.default_content_settings.popups' : 0}
+         
+        chrome_options.add_experimental_option('prefs', download_prefs)
+        #chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--window-size=1920x1080')
+        return chrome_options 
+ 
     def generate_url(self, start_date, end_date):
         """Generates a Google Trends URL for a given range
 
@@ -43,15 +89,17 @@ class GoogleTrendsScraper:
         :return: the formatted Google Trends URL from start to end
         :rtype: str
         """
-
         base = "https://trends.google.com/trends/explore"
         date = f"date={start_date}%20{end_date}"
-        query = "q=it%20is%20wednesday%20my%20dudes"
+        query = "q=" + self.query
         url = f"{base}?{date}&{query}"
 
         return url
 
-    def fetch_week_trends(self, url, output_file_name=original_output_file_name):
+    def fetch_week_trends(self,
+                          url,
+                          output_file_name=original_output_file_name
+    ):
         """Fetch the trends for a given week, in daily granularity
 
         :param str url: URL to fetch the CSV from
@@ -59,39 +107,22 @@ class GoogleTrendsScraper:
 
         :return: None
         """
-
-        # Accept the save dialogue
-        fp = webdriver.FirefoxProfile()
-        fp.set_preference("browser.download.folderList", 2)
-        fp.set_preference("browser.download.manager.showWhenStarting", False)
-        fp.set_preference("browser.download.dir", os.getcwd())
-        fp.set_preference("browser.helperApps.neverAsk.openFile",
-                          "text/csv,application/x-msexcel,application/excel,application/x-excel,application/vnd.ms-excel,image/png,image/jpeg,text/html,text/plain,application/msword,application/xml")
-        fp.set_preference("browser.helperApps.neverAsk.saveToDisk",
-                          "text/csv,application/x-msexcel,application/excel,application/x-excel,application/vnd.ms-excel,image/png,image/jpeg,text/html,text/plain,application/msword,application/xml")
-        fp.set_preference("browser.helperApps.alwaysAsk.force", False)
-        fp.set_preference("browser.download.manager.alertOnEXEOpen", False)
-        fp.set_preference("browser.download.manager.focusWhenStarting", False)
-        fp.set_preference("browser.download.manager.useWindow", False)
-        fp.set_preference("browser.download.manager.showAlertOnComplete", False)
-        fp.set_preference("browser.download.manager.closeWhenDone", False)
-
         # Download the CSV file
-        driver = webdriver.Firefox(fp, executable_path="google_trends_scraper/geckodriver")
-        driver.get(url)
-        driver.implicitly_wait(5) # may need to implicitly wait longer on slow connections
-        button = driver.find_element_by_class_name('export')
+        self.driver.get(url)
+        self.driver.implicitly_wait(
+            2 + rand()
+        )  # may need to implicitly wait longer on slow connections
+        button = self.driver.find_element_by_class_name("export")
         button.click()
 
         # wait for the file to download
         while not os.path.exists(self.original_output_file_name):
-            print("waiting 1 second, perpetually, for file to be downloaded")
-            time.sleep(1)
+            t = rand()
+            print("waiting {t} second, perpetually, for file to be downloaded")
+            time.sleep(t)
 
         print(f"about to rename {self.original_output_file_name} to {output_file_name}")
         os.rename(self.original_output_file_name, output_file_name)
-
-        driver.close()
 
     def generate_weeks(self, start_date, end_date):
         """Generates all start of the weeks between the start and end, specifically with the same day as Start
@@ -123,7 +154,9 @@ class GoogleTrendsScraper:
                 start_week = weeks_str[i]
                 end_week = weeks_str[i + 1]
             except IndexError as e:
-                print("Warning: End date wasn't at end of week, missing a most recent few days")
+                print(
+                    "Warning: End date wasn't at end of week, missing a most recent few days"
+                )
                 continue
 
             print(f"week {i}:")
@@ -163,15 +196,16 @@ class GoogleTrendsScraper:
 
             url = self.generate_url(start_day, end_day)
             self.fetch_week_trends(url, f"{start_day}_to_{end_day}.csv")
-
-            print(f"Waiting {self.seconds_delay} to avoid IP banning")
-            time.sleep(self.seconds_delay)
+            delay = rand()
+            print(f"Waiting {delay} to avoid IP banning")
+            time.sleep(delay)
 
         self.combine_csv_files(["data/multiTimeline1.csv", "data/multiTimeline2.csv"])
 
     def total_scrape(self):
         url = self.generate_url(self.start_date, self.end_date)
         self.fetch_week_trends(url, f"{self.start_date}_to_{self.end_date}.csv")
+        self.driver.close()
 
         return pd.read_csv(f"{self.start_date}_to_{self.end_date}.csv")
 
@@ -183,7 +217,7 @@ class GoogleTrendsScraper:
         """
 
         print(os.getcwd())
-
+        self.auth_google()
         if self.weekly_granularity:
             return self.weekly_scrape()
         else:
