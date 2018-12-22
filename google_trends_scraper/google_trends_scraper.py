@@ -2,6 +2,8 @@ import sys
 import os
 import time
 import pandas as pd
+import numpy as np
+from datetime import datetime
 from numpy.random import rand
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -50,7 +52,6 @@ class GoogleTrendsScraper:
         self.psswd = psswd
         self.output_file_name = output_file_name
         self.seconds_delay = seconds_delay
-        self.weekly_granularity = weekly_granularity
         self.auth_url = 'https://accounts.google.com/signin'
         self.download_path = os.getcwd()
         self.driver = webdriver.Chrome(executable_path = 'google_trends_scraper/chromedriver',
@@ -124,47 +125,31 @@ class GoogleTrendsScraper:
         print(f"about to rename {self.original_output_file_name} to {output_file_name}")
         os.rename(self.original_output_file_name, output_file_name)
 
-    def generate_weeks(self, start_date, end_date):
-        """Generates all start of the weeks between the start and end, specifically with the same day as Start
+    def total_scrape(self, ):
+        date_ranges = self.partition_dates()
+        files = []
+        for start_date, end_date in date_ranges:
+            url = self.generate_url(start_date, end_date)
+            time.sleep(1 + rand())
+            self.fetch_week_trends(url, f"{start_date}_to_{end_date}.csv")
+            files.append(
+                pd.read_csv(f"{start_date}_to_{end_date}.csv")
+            )
+        full_df = pd.concat(files) 
+        full_df.to_csv("{self.query}_{self.start_date}_to_{self.end_date}.csv",
+                       index=False)  
+        return full_df
 
-        :param str start_date: The start of the range
-        :param str end_date: The end of the range
+    def scrape(self):
+        """Begin the scrape, returning a DataFrame of the scraped data and writing the output to a CSV
 
-        :return: list of weeks within range
-        :rtype: list
+        :return: the scraped data
+        :rtype: DataFrame
         """
-
-        print(f"\tstart:\t{start_date}")
-        print(f"\tend:\t{end_date}")
-
-        # Generate every week from start to finish
-        dr = pd.date_range(start=start_date, end=end_date, freq="7D")
-        print(f"dr {dr}")
-        weeks = dr + pd.Timedelta(weeks=1)
-        print(f"weeks {weeks}")
-        weeks_str = []
-
-        # Converting to a str representation
-        for week in list(weeks):
-            print(f"week {week}")
-            weeks_str.append(str(week.date()))
-
-        for i in range(0, len(weeks_str), 1):
-            try:
-                start_week = weeks_str[i]
-                end_week = weeks_str[i + 1]
-            except IndexError as e:
-                print(
-                    "Warning: End date wasn't at end of week, missing a most recent few days"
-                )
-                continue
-
-            print(f"week {i}:")
-            print(f"\tstart:\t{start_week}")
-            print(f"\tend:\t{end_week}")
-            print()
-
-        return weeks_str
+        
+        print(os.getcwd())
+        self.auth_google()
+        return self.total_scrape()
 
     def combine_csv_files(self, file_names, output=None):
         """Combines all given csv file names, of the same structure, to a single one
@@ -187,38 +172,29 @@ class GoogleTrendsScraper:
 
         full_df.to_csv(output, index=False)  # removes the useless index column
 
-    def weekly_scrape(self):
-        weeks = self.generate_weeks(self.start_date, self.end_date)
+    def partition_dates(self):
+        """Returns a list of dates within an 8-month period, up to the 
+           last given date
 
-        for i in range(0, len(weeks), 1):
-            start_day = weeks[i]
-            end_day = weeks[i + 1]
-
-            url = self.generate_url(start_day, end_day)
-            self.fetch_week_trends(url, f"{start_day}_to_{end_day}.csv")
-            delay = rand()
-            print(f"Waiting {delay} to avoid IP banning")
-            time.sleep(delay)
-
-        self.combine_csv_files(["data/multiTimeline1.csv", "data/multiTimeline2.csv"])
-
-    def total_scrape(self):
-        url = self.generate_url(self.start_date, self.end_date)
-        self.fetch_week_trends(url, f"{self.start_date}_to_{self.end_date}.csv")
-        self.driver.close()
-
-        return pd.read_csv(f"{self.start_date}_to_{self.end_date}.csv")
-
-    def scrape(self):
-        """Begin the scrape, returning a DataFrame of the scraped data and writing the output to a CSV
-
-        :return: the scraped data
-        :rtype: DataFrame
+        As there are about 345 days in any 8-month period, split on this, 
+        specifically.
+        
+        :return: list
         """
+        fmt = '%Y-%m-%d'
+        # return the difference in days
+        
+        dr = pd.date_range(self.start_date, self.end_date, freq='D')
+        date_partitions = []
+        efrac = int(np.floor(len(dr)/ 245))
+        
+        for partition in range(efrac):
+            bottom, top = partition, partition + 245
+            start = str(dr[bottom:top][0].date())
+            end = str(dr[bottom:top][-1].date())
+            date_partitions.append((start, end))
 
-        print(os.getcwd())
-        self.auth_google()
-        if self.weekly_granularity:
-            return self.weekly_scrape()
-        else:
-            return self.total_scrape()
+        remainder = len(dr) - (245 * efrac)     
+        date_partitions.append((self.start_date, self.end_date))
+
+        return date_partitions
