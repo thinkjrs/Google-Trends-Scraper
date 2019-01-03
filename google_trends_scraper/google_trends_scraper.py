@@ -138,6 +138,7 @@ class GoogleTrendsScraper:
         full_df = pd.concat(files) 
         full_df.to_csv("{self.query}_{self.start_date}_to_{self.end_date}.csv",
                        index=False)  
+        self.driver.close()
         return full_df
 
     def scrape(self):
