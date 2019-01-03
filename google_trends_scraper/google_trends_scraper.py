@@ -78,7 +78,7 @@ class GoogleTrendsScraper:
          
         chrome_options.add_experimental_option('prefs', download_prefs)
         chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--window-size=1920x1080')
+        #chrome_options.add_argument('--window-size=1920x1080')
         return chrome_options 
  
     def generate_url(self, start_date, end_date):
@@ -176,25 +176,25 @@ class GoogleTrendsScraper:
         """Returns a list of dates within an 6-month period, up to the 
            last given date
 
-        As there are about 182 days in any 6-month period, split on this, 
+        As there are about 90 days in any 3-month period, split on this, 
         specifically.
         
         :return: list
         """
         fmt = '%Y-%m-%d'
         # return the difference in days
-        
+        datenum = 90 
         dr = pd.date_range(self.start_date, self.end_date, freq='D')
         date_partitions = []
-        efrac = int(np.floor(len(dr)/ 182 ))
+        efrac = int(np.floor(len(dr)/ datenum))
         
         for partition in range(efrac):
-            bottom, top = partition, partition + 182
+            bottom, top = partition, partition + datenum 
             start = str(dr[bottom:top][0].date())
             end = str(dr[bottom:top][-1].date())
             date_partitions.append((start, end))
 
-        remainder = len(dr) - (182 * efrac)     
+        remainder = len(dr) - (datenum * efrac)     
         date_partitions.append((self.start_date, self.end_date))
 
         return date_partitions
