@@ -31,4 +31,5 @@ def test_gts_partition_date():
     testlist = gts.partition_dates()
     assert len(testlist) > 0
     assert (testlist[0][0], testlist[-1][1]) == (start, end)
+    assert (testlist[-2][1], testlist[-1][0]) == ('2018-11-06', '2018-11-07')
     

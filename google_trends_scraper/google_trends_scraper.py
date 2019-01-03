@@ -190,15 +190,14 @@ class GoogleTrendsScraper:
         dr = pd.date_range(self.start_date, self.end_date, freq='D')
         date_partitions = []
         efrac = int(np.floor(len(dr) / datenum))
-        bottom = None
-        for partition in np.arange(0, efrac, datenum):
+        for partition in np.arange(0, efrac * datenum, datenum):
             bottom, top = partition, partition + datenum 
-            print(f'partition dates -> {bottom}:{top}')
             start = str(dr[bottom:top][0].date())
             end = str(dr[bottom:top][-1].date())
             date_partitions.append((start, end))
 
         remainder = len(dr) - (datenum * efrac)     
-        date_partitions.append((self.start_date, self.end_date))
+        start = str(dr[datenum * efrac: len(dr)][0].date())
+        date_partitions.append((start, self.end_date))
 
         return date_partitions
