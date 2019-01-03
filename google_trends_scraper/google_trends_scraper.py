@@ -116,12 +116,16 @@ class GoogleTrendsScraper:
         )  # may need to implicitly wait longer on slow connections
         button = self.driver.find_element_by_class_name("export")
         button.click()
-
         # wait for the file to download
+        start = time.time() 
         while not os.path.exists(self.original_output_file_name):
             t = rand()
             print(f"waiting {t:.2f} second(s), perpetually, for file to be downloaded")
             time.sleep(t)
+            if start > self.seconds_delay:
+                error = f"Could not acquire {self.original_query}" +\
+                        f" @ {url} @ {time.time()}"
+                raise Exception(error)
 
         print(f"about to rename {self.original_output_file_name} to {output_file_name}")
         os.rename(self.original_output_file_name, output_file_name)
