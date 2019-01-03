@@ -77,8 +77,8 @@ class GoogleTrendsScraper:
                           'profile.default_content_settings.popups' : 0}
          
         chrome_options.add_experimental_option('prefs', download_prefs)
-        chrome_options.add_argument('--headless')
-        #chrome_options.add_argument('--window-size=1920x1080')
+#        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--window-size=1920x1080')
         return chrome_options 
  
     def generate_url(self, start_date, end_date):
@@ -129,16 +129,18 @@ class GoogleTrendsScraper:
         date_ranges = self.partition_dates()
         files = []
         for start_date, end_date in date_ranges:
+            print(f"{start_date}:{end_date}")
             url = self.generate_url(start_date, end_date)
             time.sleep(1 + rand())
             self.fetch_week_trends(url, f"{start_date}_to_{end_date}.csv")
             files.append(
                 pd.read_csv(f"{start_date}_to_{end_date}.csv")
             )
+        self.driver.quit()
         full_df = pd.concat(files) 
         full_df.to_csv("{self.query}_{self.start_date}_to_{self.end_date}.csv",
                        index=False)  
-        self.driver.quit()
+
         return full_df
 
     def scrape(self):
@@ -177,20 +179,21 @@ class GoogleTrendsScraper:
         """Returns a list of dates within an 6-month period, up to the 
            last given date
 
-        As there are about 90 days in any 3-month period, split on this, 
+        As there are about 245 days in any 3-month period, split on this, 
         specifically.
         
         :return: list
         """
         fmt = '%Y-%m-%d'
         # return the difference in days
-        datenum = 90 
+        datenum = 75 
         dr = pd.date_range(self.start_date, self.end_date, freq='D')
         date_partitions = []
-        efrac = int(np.floor(len(dr)/ 365 / datenum))
-        
-        for partition in range(efrac):
+        efrac = int(np.floor(len(dr) / datenum))
+        bottom = None
+        for partition in np.arange(0, efrac, datenum):
             bottom, top = partition, partition + datenum 
+            print(f'partition dates -> {bottom}:{top}')
             start = str(dr[bottom:top][0].date())
             end = str(dr[bottom:top][-1].date())
             date_partitions.append((start, end))
