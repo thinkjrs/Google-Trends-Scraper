@@ -46,6 +46,7 @@ class GoogleTrendsScraper:
         """
 
         self.query = query.replace(" ", "%20")
+        self.original_query = query.replace(" ", "_")
         self.start_date = start_date
         self.end_date = end_date
         self.email = email  
@@ -119,7 +120,7 @@ class GoogleTrendsScraper:
         # wait for the file to download
         while not os.path.exists(self.original_output_file_name):
             t = rand()
-            print("waiting {t} second, perpetually, for file to be downloaded")
+            print(f"waiting {t:.2f} second(s), perpetually, for file to be downloaded")
             time.sleep(t)
 
         print(f"about to rename {self.original_output_file_name} to {output_file_name}")
@@ -129,16 +130,18 @@ class GoogleTrendsScraper:
         date_ranges = self.partition_dates()
         files = []
         for start_date, end_date in date_ranges:
-            print(f"{start_date}:{end_date}")
             url = self.generate_url(start_date, end_date)
             time.sleep(1 + rand())
             self.fetch_week_trends(url, f"{start_date}_to_{end_date}.csv")
             files.append(
                 pd.read_csv(f"{start_date}_to_{end_date}.csv")
             )
+            os.remove(f"{start_date}_to_{end_date}.csv")
         self.driver.quit()
         full_df = pd.concat(files) 
-        full_df.to_csv("{self.query}_{self.start_date}_to_{self.end_date}.csv",
+        filename = f"{self.original_query}_{self.start_date}" + \
+                   f"_to_{self.end_date}.csv"
+        full_df.to_csv(filename,
                        index=False)  
 
         return full_df
