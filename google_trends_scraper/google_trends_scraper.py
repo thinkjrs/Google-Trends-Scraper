@@ -77,7 +77,7 @@ class GoogleTrendsScraper:
                           'profile.default_content_settings.popups' : 0}
          
         chrome_options.add_experimental_option('prefs', download_prefs)
-        #chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--headless')
         chrome_options.add_argument('--window-size=1920x1080')
         return chrome_options 
  
@@ -173,10 +173,10 @@ class GoogleTrendsScraper:
         full_df.to_csv(output, index=False)  # removes the useless index column
 
     def partition_dates(self):
-        """Returns a list of dates within an 8-month period, up to the 
+        """Returns a list of dates within an 6-month period, up to the 
            last given date
 
-        As there are about 345 days in any 8-month period, split on this, 
+        As there are about 182 days in any 6-month period, split on this, 
         specifically.
         
         :return: list
@@ -186,15 +186,15 @@ class GoogleTrendsScraper:
         
         dr = pd.date_range(self.start_date, self.end_date, freq='D')
         date_partitions = []
-        efrac = int(np.floor(len(dr)/ 245))
+        efrac = int(np.floor(len(dr)/ 182 ))
         
         for partition in range(efrac):
-            bottom, top = partition, partition + 245
+            bottom, top = partition, partition + 182
             start = str(dr[bottom:top][0].date())
             end = str(dr[bottom:top][-1].date())
             date_partitions.append((start, end))
 
-        remainder = len(dr) - (245 * efrac)     
+        remainder = len(dr) - (182 * efrac)     
         date_partitions.append((self.start_date, self.end_date))
 
         return date_partitions
