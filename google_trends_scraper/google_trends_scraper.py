@@ -144,7 +144,7 @@ class GoogleTrendsScraper:
                 )
                 os.remove(f"{start_date}_to_{end_date}.csv")
             except Exception as err:
-                print("{err}")
+                print(f"{err}")
             finally:
                 self.driver.quit()    
         self.driver.quit()
