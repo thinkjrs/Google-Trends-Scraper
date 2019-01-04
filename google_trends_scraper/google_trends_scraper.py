@@ -100,8 +100,7 @@ class GoogleTrendsScraper:
 
     def fetch_week_trends(self,
                           url,
-                          output_file_name=original_output_file_name
-    ):
+                          output_file_name=original_output_file_name):
         """Fetch the trends for a given week, in daily granularity
 
         :param str url: URL to fetch the CSV from
@@ -120,14 +119,16 @@ class GoogleTrendsScraper:
         start = time.time() 
         while not os.path.exists(self.original_output_file_name):
             t = rand()
-            print(f"waiting {t:.2f} second(s), perpetually, for file to be downloaded")
+            print(f"waiting {t:.2f} second(s), perpetually, " + \
+                  f"for file to be downloaded")
             time.sleep(t)
             if start > self.seconds_delay:
                 error = f"Could not acquire {self.original_query}" +\
                         f" @ {url} @ {time.time()}"
                 raise Exception(error)
 
-        print(f"about to rename {self.original_output_file_name} to {output_file_name}")
+        print(f"about to rename {self.original_output_file_name} to " + \
+              f"{output_file_name}")
         os.rename(self.original_output_file_name, output_file_name)
 
     def total_scrape(self, ):
@@ -151,7 +152,9 @@ class GoogleTrendsScraper:
         return full_df
 
     def scrape(self):
-        """Begin the scrape, returning a DataFrame of the scraped data and writing the output to a CSV
+        """
+        Begin the scrape, returning a DataFrame of the scraped data
+        and writing the output to a CSV
 
         :return: the scraped data
         :rtype: DataFrame
@@ -162,7 +165,8 @@ class GoogleTrendsScraper:
         return self.total_scrape()
 
     def combine_csv_files(self, file_names, output=None):
-        """Combines all given csv file names, of the same structure, to a single one
+        """
+        Combines all given csv file names, of the same structure, to a single one
 
         :param list file_names: a list of all file names to combine
         :param str output: the filename of the output we'll be making
@@ -170,7 +174,6 @@ class GoogleTrendsScraper:
         :return: None
         """
 
-        # How you're supposed to set a default value to a class variable, weird but you can't reference self in the
         # function definition
         if output is None:
             output = self.output_file_name
