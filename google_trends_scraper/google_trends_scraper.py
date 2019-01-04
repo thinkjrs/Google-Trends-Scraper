@@ -49,39 +49,43 @@ class GoogleTrendsScraper:
         self.original_query = query.replace(" ", "_")
         self.start_date = start_date
         self.end_date = end_date
-        self.email = email  
+        self.email = email
         self.psswd = psswd
         self.output_file_name = output_file_name
         self.seconds_delay = seconds_delay
-        self.auth_url = 'https://accounts.google.com/signin'
+        self.auth_url = "https://accounts.google.com/signin"
         self.download_path = os.getcwd()
-        self.driver = webdriver.Chrome(executable_path = 'google_trends_scraper/chromedriver',
-                                       chrome_options = self.get_options())
- 
+        ex_path = "google_trends_scraper/chromedriver"
+        self.driver = webdriver.Chrome(
+            executable_path=ex_path, options=self.get_options()
+        )
 
     def auth_google(self):
         self.driver.get(self.auth_url)
         self.driver.implicitly_wait(3)
         self.driver.find_element_by_id("identifierId").send_keys(self.email)
         self.driver.find_element_by_id("identifierNext").click()
-        time.sleep(1 + rand() * .5)
-        self.driver.find_element_by_css_selector(
-            "input[type='password']").send_keys(self.psswd)
-        element = self.driver.find_element_by_id('passwordNext')
+        time.sleep(1 + rand() * 0.5)
+        self.driver.find_element_by_css_selector("input[type='password']").send_keys(
+            self.psswd
+        )
+        element = self.driver.find_element_by_id("passwordNext")
         self.driver.execute_script("arguments[0].click();", element)
-    
+
     def get_options(self):
         # Add arguments telling Selenium to not actually open a window
         chrome_options = Options()
-        download_prefs = {'download.default_directory' : self.download_path,
-                          'download.prompt_for_download' : False,
-                          'profile.default_content_settings.popups' : 0}
-         
-        chrome_options.add_experimental_option('prefs', download_prefs)
-#        chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--window-size=1920x1080')
-        return chrome_options 
- 
+        download_prefs = {
+            "download.default_directory": self.download_path,
+            "download.prompt_for_download": False,
+            "profile.default_content_settings.popups": 0,
+        }
+
+        chrome_options.add_experimental_option("prefs", download_prefs)
+        #        chrome_options.add_argument('--headless')
+        chrome_options.add_argument("--window-size=1920x1080")
+        return chrome_options
+
     def generate_url(self, start_date, end_date):
         """Generates a Google Trends URL for a given range
 
@@ -98,62 +102,68 @@ class GoogleTrendsScraper:
 
         return url
 
-    def fetch_week_trends(self,
-                          url,
-                          output_file_name=original_output_file_name):
+    def fetch_week_trends(self, url, output_file_name=original_output_file_name):
         """Fetch the trends for a given week, in daily granularity
 
         :param str url: URL to fetch the CSV from
-        :param str output_file_name: file path for where to save the CSV file
+        :param str output_file_name: file path for where to save the CSV
+               file
 
         :return: None
         """
         # Download the CSV file
         self.driver.get(url)
         self.driver.implicitly_wait(
-            2 + rand()
+            3 + rand()
         )  # may need to implicitly wait longer on slow connections
         button = self.driver.find_element_by_class_name("export")
         button.click()
         # wait for the file to download
-        start = time.time() 
+        start = time.time()
         while not os.path.exists(self.original_output_file_name):
             t = rand()
-            print(f"waiting {t:.2f} second(s), perpetually, " + \
-                  f"for file to be downloaded")
+            print(
+                f"waiting {t:.2f} second(s), perpetually, "
+                + f"for file to be downloaded"
+            )
             time.sleep(t)
-            if start > self.seconds_delay:
-                error = f"Could not acquire {self.original_query}" +\
-                        f" @ {url} @ {time.time()}"
+            if time.time() - start > self.seconds_delay:
+                error = (
+                    f"Could not acquire {self.original_query}"
+                    + f" @ {url} @ {time.time()}"
+                )
                 raise Exception(error)
 
-        print(f"about to rename {self.original_output_file_name} to " + \
-              f"{output_file_name}")
+        print(
+            f"about to rename {self.original_output_file_name} to "
+            + f"{output_file_name}"
+        )
         os.rename(self.original_output_file_name, output_file_name)
-
-    def total_scrape(self, ):
+        os.remove(self.original_output_file_name)
+    def total_scrape(self,):
         date_ranges = self.partition_dates()
         files = []
         for start_date, end_date in date_ranges:
             try:
                 url = self.generate_url(start_date, end_date)
                 time.sleep(1 + rand())
-                self.fetch_week_trends(url, f"{start_date}_to_{end_date}.csv")
-                files.append(
-                    pd.read_csv(f"{start_date}_to_{end_date}.csv")
+                output_filename = (
+                    f"{self.original_query}_{start_date}_to_{end_date}.csv"
                 )
-                os.remove(f"{start_date}_to_{end_date}.csv")
+                self.fetch_week_trends(url, output_filename)
+                files.append(pd.read_csv(output_filename))
+                os.remove(output_filename)
             except Exception as err:
                 print(f"{err}")
-            finally:
-                self.driver.quit()    
-        self.driver.quit()
-        full_df = pd.concat(files) 
-        filename = f"{self.original_query}_{self.start_date}" + \
-                   f"_to_{self.end_date}.csv"
-        full_df.to_csv(filename,
-                       index=False)  
+                continue
 
+        self.driver.quit()
+        full_df = pd.concat(files)
+        filename = (
+            f"{self.original_query}_{self.start_date}" + \
+            f"_to_{self.end_date}.csv"
+        )
+        full_df.to_csv(filename, index=False)
         return full_df
 
     def scrape(self):
@@ -164,14 +174,15 @@ class GoogleTrendsScraper:
         :return: the scraped data
         :rtype: DataFrame
         """
-        
+
         print(os.getcwd())
         self.auth_google()
         return self.total_scrape()
 
     def combine_csv_files(self, file_names, output=None):
         """
-        Combines all given csv file names, of the same structure, to a single one
+        Combines all given csv file names, of the same structure, 
+        to a single one
 
         :param list file_names: a list of all file names to combine
         :param str output: the filename of the output we'll be making
@@ -190,8 +201,9 @@ class GoogleTrendsScraper:
 
         full_df.to_csv(output, index=False)  # removes the useless index column
 
-    def partition_dates(self, partition_size = None):
-        """Returns a list of dates within an 6-month period, up to the 
+    def partition_dates(self, partition_size=None):
+        """
+        Returns a list of dates within an 6-month period, up to the 
            last given date
 
         As there are about 245 days in any 3-month period, split on this, 
@@ -199,23 +211,21 @@ class GoogleTrendsScraper:
         
         :return: list
         """
-        fmt = '%Y-%m-%d'
+        fmt = "%Y-%m-%d"
         # return the difference in days
         if not partition_size:
-            partition_size = 75 
-        dr = pd.date_range(self.start_date, self.end_date, freq='D')
+            partition_size = 75
+        dr = pd.date_range(self.start_date, self.end_date, freq="D")
         date_partitions = []
         efrac = int(np.floor(len(dr) / partition_size))
-        for partition in np.arange(0,
-                                   efrac * partition_size,
-                                   partition_size):
+        for partition in np.arange(0, efrac * partition_size, partition_size):
             bottom, top = partition, partition + partition_size
             start = str(dr[bottom:top][0].date())
             end = str(dr[bottom:top][-1].date())
             date_partitions.append((start, end))
 
-        remainder = len(dr) - (partition_size * efrac)     
-        start = str(dr[partition_size * efrac: len(dr)][0].date())
+        remainder = len(dr) - (partition_size * efrac)
+        start = str(dr[partition_size * efrac : len(dr)][0].date())
         date_partitions.append((start, self.end_date))
 
         return date_partitions
