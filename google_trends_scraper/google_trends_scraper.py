@@ -135,13 +135,18 @@ class GoogleTrendsScraper:
         date_ranges = self.partition_dates()
         files = []
         for start_date, end_date in date_ranges:
-            url = self.generate_url(start_date, end_date)
-            time.sleep(1 + rand())
-            self.fetch_week_trends(url, f"{start_date}_to_{end_date}.csv")
-            files.append(
-                pd.read_csv(f"{start_date}_to_{end_date}.csv")
-            )
-            os.remove(f"{start_date}_to_{end_date}.csv")
+            try:
+                url = self.generate_url(start_date, end_date)
+                time.sleep(1 + rand())
+                self.fetch_week_trends(url, f"{start_date}_to_{end_date}.csv")
+                files.append(
+                    pd.read_csv(f"{start_date}_to_{end_date}.csv")
+                )
+                os.remove(f"{start_date}_to_{end_date}.csv")
+            except Exception as err:
+                print("{err}")
+            finally:
+                self.driver.quit()    
         self.driver.quit()
         full_df = pd.concat(files) 
         filename = f"{self.original_query}_{self.start_date}" + \
