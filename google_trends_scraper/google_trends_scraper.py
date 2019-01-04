@@ -182,7 +182,7 @@ class GoogleTrendsScraper:
 
         full_df.to_csv(output, index=False)  # removes the useless index column
 
-    def partition_dates(self):
+    def partition_dates(self, partition_size = None):
         """Returns a list of dates within an 6-month period, up to the 
            last given date
 
@@ -193,18 +193,21 @@ class GoogleTrendsScraper:
         """
         fmt = '%Y-%m-%d'
         # return the difference in days
-        datenum = 75 
+        if not partition_size:
+            partition_size = 75 
         dr = pd.date_range(self.start_date, self.end_date, freq='D')
         date_partitions = []
-        efrac = int(np.floor(len(dr) / datenum))
-        for partition in np.arange(0, efrac * datenum, datenum):
-            bottom, top = partition, partition + datenum 
+        efrac = int(np.floor(len(dr) / partition_size))
+        for partition in np.arange(0,
+                                   efrac * partition_size,
+                                   partition_size):
+            bottom, top = partition, partition + partition_size
             start = str(dr[bottom:top][0].date())
             end = str(dr[bottom:top][-1].date())
             date_partitions.append((start, end))
 
-        remainder = len(dr) - (datenum * efrac)     
-        start = str(dr[datenum * efrac: len(dr)][0].date())
+        remainder = len(dr) - (partition_size * efrac)     
+        start = str(dr[partition_size * efrac: len(dr)][0].date())
         date_partitions.append((start, self.end_date))
 
         return date_partitions
